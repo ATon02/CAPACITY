@@ -138,7 +138,69 @@ public class OpenApiConfig {
                                                             .schema(new Schema<>().$ref("#/components/schemas/ErrorResponse"))))))
                     );
 
+            PathItem getCapacityByIdPath = new PathItem()
+                    .get(new Operation()
+                            .operationId("getCapacityById")
+                            .tags(List.of("Capacity"))
+                            .summary("Get capacity by ID")
+                            .description("Retrieves a specific capacity by its ID")
+                            .addParametersItem(new Parameter()
+                                    .name("id")
+                                    .in("path")
+                                    .required(true)
+                                    .description("Capacity ID")
+                                    .schema(new Schema<>().type("integer").format("int64")))
+                            .responses(new ApiResponses()
+                                    .addApiResponse("200", new ApiResponse()
+                                            .description("Capacity found successfully")
+                                            .content(new Content().addMediaType("application/json",
+                                                    new io.swagger.v3.oas.models.media.MediaType()
+                                                            .schema(new Schema<>().$ref("#/components/schemas/CapacitySuccessResponse")))))
+                                    .addApiResponse("400", new ApiResponse()
+                                            .description("Invalid capacity ID format or invalid ID")
+                                            .content(new Content().addMediaType("application/json",
+                                                    new io.swagger.v3.oas.models.media.MediaType()
+                                                            .schema(new Schema<>().$ref("#/components/schemas/ErrorResponse")))))
+                                    .addApiResponse("404", new ApiResponse()
+                                            .description("Capacity not found")
+                                            .content(new Content().addMediaType("application/json",
+                                                    new io.swagger.v3.oas.models.media.MediaType()
+                                                            .schema(new Schema<>().$ref("#/components/schemas/ErrorResponse"))))))
+                    );
+
+            PathItem getCapacitiesByIdsPath = new PathItem()
+                    .get(new Operation()
+                            .operationId("getCapacityByIds")
+                            .tags(List.of("Capacity"))
+                            .summary("Get capacities by list of IDs")
+                            .description("Retrieves multiple capacities by providing a list of IDs as query parameter")
+                            .addParametersItem(new Parameter()
+                                    .name("ids")
+                                    .in("query")
+                                    .required(true)
+                                    .description("Comma-separated list of capacity IDs. Example: ids=1,2,3")
+                                    .schema(new StringSchema()))
+                            .responses(new ApiResponses()
+                                    .addApiResponse("200", new ApiResponse()
+                                            .description("Capacities found successfully")
+                                            .content(new Content().addMediaType("application/json",
+                                                    new io.swagger.v3.oas.models.media.MediaType()
+                                                            .schema(new Schema<>().$ref("#/components/schemas/CapacityListSuccessResponse")))))
+                                    .addApiResponse("400", new ApiResponse()
+                                            .description("Invalid IDs format, missing IDs parameter, or invalid ID values")
+                                            .content(new Content().addMediaType("application/json",
+                                                    new io.swagger.v3.oas.models.media.MediaType()
+                                                            .schema(new Schema<>().$ref("#/components/schemas/ErrorResponse")))))
+                                    .addApiResponse("404", new ApiResponse()
+                                            .description("No capacities found for the provided IDs")
+                                            .content(new Content().addMediaType("application/json",
+                                                    new io.swagger.v3.oas.models.media.MediaType()
+                                                            .schema(new Schema<>().$ref("#/components/schemas/ErrorResponse"))))))
+                    );
+
             openApi.path("/api/capacity", saveCapacityPath);
+            openApi.path("/api/v1/capacity/{id}", getCapacityByIdPath);
+            openApi.path("/api/v1/capacity/batch", getCapacitiesByIdsPath);
         };
     }
 }

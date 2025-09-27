@@ -1,6 +1,6 @@
 package co.com.backend.reactive.api;
 
-import co.com.backend.reactive.usecase.capacity.CapacityUseCase;
+import co.com.backend.reactive.usecase.capacity.ICapacityUseCase;
 import co.com.backend.reactive.usecase.capacity.dto.CapacityCompletedResponse;
 import co.com.backend.reactive.api.dtos.request.CapacityRequestDTO;
 import co.com.backend.reactive.api.dtos.response.CapacityResponseDTO;
@@ -14,12 +14,14 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
 public class Handler {
-    private final CapacityUseCase capacityUseCase;
+    private final ICapacityUseCase capacityUseCase;
     private final CapacityDTOMapper capacityDTOMapper;
 
     public Mono<ServerResponse> createCapacity(ServerRequest serverRequest) {
@@ -61,6 +63,58 @@ public class Handler {
                             .status(200)
                             .message("Capacities retrieved successfully")
                             .path(path)
+                            .timestamp(LocalDateTime.now())
+                            .data(response)
+                            .build();
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(body);
+                });
+    }
+
+    public Mono<ServerResponse> getCapacityById(ServerRequest request) {
+        String idCapacity = request.pathVariable("id");
+
+        return Mono.fromCallable(() -> Long.parseLong(idCapacity))
+                .onErrorMap(NumberFormatException.class,
+                        ex -> new IllegalArgumentException("Invalid capacity ID format"))
+                .flatMap(capacityUseCase::findById)
+                .map(capacityDTOMapper::toResponseDTO)
+                .flatMap(capacity -> {
+                    BaseResponse<CapacityResponseDTO> body = BaseResponse.<CapacityResponseDTO>builder()
+                            .status(200)
+                            .message("Capacity found successfully")
+                            .path(request.path())
+                            .timestamp(LocalDateTime.now())
+                            .data(capacity)
+                            .build();
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(body);
+                });
+    }
+
+    public Mono<ServerResponse> getCapacityByIds(ServerRequest request) {
+        String idsParam = request.queryParam("ids").orElse("");
+        return Mono.fromCallable(() -> {
+                    if (idsParam.isEmpty()) {
+                        throw new IllegalArgumentException("IDs parameter is required");
+                    }
+                    return Arrays.stream(idsParam.split(","))
+                            .map(String::trim)
+                            .map(Long::parseLong)
+                            .collect(Collectors.toList());
+                })
+                .onErrorMap(NumberFormatException.class,
+                        ex -> new IllegalArgumentException("Invalid ID format in parameters"))
+                .flatMapMany(capacityUseCase::findByIds)
+                .collectList()
+                .flatMap(response -> {
+                    BaseResponse<List<CapacityCompletedResponse>> body = 
+                            BaseResponse.<List<CapacityCompletedResponse>>builder()
+                            .status(200)
+                            .message("Capacities retrieved successfully")
+                            .path(request.path())
                             .timestamp(LocalDateTime.now())
                             .data(response)
                             .build();

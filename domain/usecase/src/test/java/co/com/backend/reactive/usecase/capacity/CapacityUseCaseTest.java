@@ -487,4 +487,162 @@ class CapacityUseCaseTest {
         verify(tecnologyDataRepository).findByIds(List.of(1L));
     }
 
+    @Test
+    void findById_ok_whenValidId() {
+        Long capacityId = 1L;
+        Capacity capacity = Capacity.builder()
+                .id(capacityId)
+                .name("Backend Development")
+                .description("Backend development capacity")
+                .technologies(Set.of(1L, 2L, 3L))
+                .build();
+
+        when(capacityRepository.findById(capacityId)).thenReturn(Mono.just(capacity));
+
+        StepVerifier.create(useCase.findById(capacityId))
+                .assertNext(result -> {
+                    assert result.getId().equals(capacityId);
+                    assert result.getName().equals("Backend Development");
+                    assert result.getDescription().equals("Backend development capacity");
+                    assert result.getTechnologies().equals(Set.of(1L, 2L, 3L));
+                })
+                .verifyComplete();
+
+        verify(capacityRepository).findById(capacityId);
+    }
+
+    @Test
+    void findById_error_whenIdIsNull() {
+        StepVerifier.create(useCase.findById(null))
+                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
+                        && CapacityError.INVALID_ID.getMessage().equals(ex.getMessage()))
+                .verify();
+
+        verify(capacityRepository, never()).findById(any());
+    }
+
+    @Test
+    void findById_error_whenCapacityNotFound() {
+        Long capacityId = 999L;
+
+        when(capacityRepository.findById(capacityId)).thenReturn(Mono.empty());
+
+        StepVerifier.create(useCase.findById(capacityId))
+                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
+                        && CapacityError.NOT_FOUND.getMessage().equals(ex.getMessage()))
+                .verify();
+
+        verify(capacityRepository).findById(capacityId);
+    }
+
+    @Test
+    void findByIds_ok_whenValidIds() {
+        List<Long> ids = List.of(1L, 2L);
+        
+        Capacity capacity1 = Capacity.builder()
+                .id(1L)
+                .name("Backend Development")
+                .description("Backend development capacity")
+                .build();
+        
+        Capacity capacity2 = Capacity.builder()
+                .id(2L)
+                .name("Frontend Development")
+                .description("Frontend development capacity")
+                .build();
+
+        TecnologyData tech1 = TecnologyData.builder()
+                .id(1L)
+                .name("Java")
+                .build();
+
+        TecnologyData tech2 = TecnologyData.builder()
+                .id(2L)
+                .name("React")
+                .build();
+
+        when(capacityRepository.findByIds(ids)).thenReturn(Flux.just(capacity1, capacity2));
+        when(capacityTechnologyRepository.findTechnologyIdsByCapacityId(1L)).thenReturn(Flux.just(1L));
+        when(capacityTechnologyRepository.findTechnologyIdsByCapacityId(2L)).thenReturn(Flux.just(2L));
+        when(tecnologyDataRepository.findByIds(List.of(1L))).thenReturn(Flux.just(tech1));
+        when(tecnologyDataRepository.findByIds(List.of(2L))).thenReturn(Flux.just(tech2));
+
+        StepVerifier.create(useCase.findByIds(ids))
+                .assertNext(response -> {
+                    assert response.getId().equals(1L);
+                    assert response.getName().equals("Backend Development");
+                    assert response.getDescription().equals("Backend development capacity");
+                    assert response.getTechnologies().size() == 1;
+                    assert response.getTechnologies().get(0).getId().equals(1L);
+                    assert response.getTechnologies().get(0).getName().equals("Java");
+                })
+                .assertNext(response -> {
+                    assert response.getId().equals(2L);
+                    assert response.getName().equals("Frontend Development");
+                    assert response.getDescription().equals("Frontend development capacity");
+                    assert response.getTechnologies().size() == 1;
+                    assert response.getTechnologies().get(0).getId().equals(2L);
+                    assert response.getTechnologies().get(0).getName().equals("React");
+                })
+                .verifyComplete();
+
+        verify(capacityRepository).findByIds(ids);
+        verify(capacityTechnologyRepository).findTechnologyIdsByCapacityId(1L);
+        verify(capacityTechnologyRepository).findTechnologyIdsByCapacityId(2L);
+        verify(tecnologyDataRepository).findByIds(List.of(1L));
+        verify(tecnologyDataRepository).findByIds(List.of(2L));
+    }
+
+    @Test
+    void findByIds_ok_whenCapacityHasNoTechnologies() {
+        List<Long> ids = List.of(1L);
+        
+        Capacity capacity = Capacity.builder()
+                .id(1L)
+                .name("Management")
+                .description("Management capacity")
+                .build();
+
+        when(capacityRepository.findByIds(ids)).thenReturn(Flux.just(capacity));
+        when(capacityTechnologyRepository.findTechnologyIdsByCapacityId(1L)).thenReturn(Flux.empty());
+
+        StepVerifier.create(useCase.findByIds(ids))
+                .assertNext(response -> {
+                    assert response.getId().equals(1L);
+                    assert response.getName().equals("Management");
+                    assert response.getDescription().equals("Management capacity");
+                    assert response.getTechnologies().isEmpty();
+                })
+                .verifyComplete();
+
+        verify(capacityRepository).findByIds(ids);
+        verify(capacityTechnologyRepository).findTechnologyIdsByCapacityId(1L);
+        verify(tecnologyDataRepository, never()).findByIds(any());
+    }
+
+    @Test
+    void findByIds_error_whenIdsListIsEmpty() {
+        List<Long> emptyIds = List.of();
+
+        StepVerifier.create(useCase.findByIds(emptyIds))
+                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
+                        && CapacityError.INVALID_ID.getMessage().equals(ex.getMessage()))
+                .verify();
+
+        verify(capacityRepository, never()).findByIds(any());
+        verify(capacityTechnologyRepository, never()).findTechnologyIdsByCapacityId(any());
+    }
+
+    @Test
+    void findByIds_error_whenIdsContainNull() {
+        List<Long> idsWithNull = List.of(1L, null, 3L);
+
+        StepVerifier.create(useCase.findByIds(idsWithNull))
+                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
+                        && CapacityError.INVALID_ID.getMessage().equals(ex.getMessage()))
+                .verify();
+
+        verify(capacityRepository, never()).findByIds(any());
+        verify(capacityTechnologyRepository, never()).findTechnologyIdsByCapacityId(any());
+    }
 }

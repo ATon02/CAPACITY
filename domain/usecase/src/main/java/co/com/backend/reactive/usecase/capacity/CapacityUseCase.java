@@ -13,12 +13,10 @@ import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class CapacityUseCase implements ICapacityUseCase {
-    
+
     private final CapacityRepository capacityRepository;
     private final CapacityTechnologyRepository capacityTechnologyRepository;
     private final TecnologyDataRepository tecnologyDataRepository;
@@ -29,7 +27,7 @@ public class CapacityUseCase implements ICapacityUseCase {
                 .flatMap(validatedCapacity -> validateAndCreateTechnologies(validatedCapacity))
                 .flatMap(this::saveCapacityWithTechnologies);
     }
-    
+
     private Mono<Capacity> validateAndCreateTechnologies(Capacity capacity) {
         if (capacity.getTechnologies() == null || capacity.getTechnologies().isEmpty()) {
             return Mono.error(new IllegalArgumentException(CapacityError.TECHNOLOGIES_REQUIRED.getMessage()));
@@ -39,17 +37,18 @@ public class CapacityUseCase implements ICapacityUseCase {
                 .collectList()
                 .map(validatedTechIds -> capacity);
     }
-    
+
     private Mono<Long> validateTechnologyExists(Long technologyId) {
         return tecnologyDataRepository.existsById(technologyId)
                 .flatMap(exists -> {
                     if (!exists) {
-                        return Mono.error(new IllegalArgumentException(CapacityError.TECHNOLOGY_NOT_FOUND.getMessage()+" " + technologyId));
+                        return Mono.error(new IllegalArgumentException(
+                                CapacityError.TECHNOLOGY_NOT_FOUND.getMessage() + " " + technologyId));
                     }
                     return Mono.just(technologyId);
                 });
     }
-    
+
     private Mono<Capacity> saveCapacityWithTechnologies(Capacity capacity) {
         return capacityRepository.save(capacity)
                 .flatMap(savedCapacity -> {
@@ -59,12 +58,12 @@ public class CapacityUseCase implements ICapacityUseCase {
                             .description(savedCapacity.getDescription())
                             .technologies(capacity.getTechnologies())
                             .build();
-                    
+
                     return saveCapacityTechnologies(capacityWithTechnologies)
                             .thenReturn(capacityWithTechnologies);
                 });
     }
-    
+
     private Mono<Void> saveCapacityTechnologies(Capacity capacity) {
         return Flux.fromIterable(capacity.getTechnologies())
                 .map(technologyId -> {
@@ -81,7 +80,8 @@ public class CapacityUseCase implements ICapacityUseCase {
     }
 
     @Override
-    public Flux<CapacityCompletedResponse> getAllCapacitiesWithTechnologies(int page, int size, String sortBy, String sortDirection) {
+    public Flux<CapacityCompletedResponse> getAllCapacitiesWithTechnologies(int page, int size, String sortBy,
+            String sortDirection) {
         return capacityRepository.findAllPaginated(page, size, sortBy, sortDirection)
                 .concatMap(capacity -> capacityTechnologyRepository.findTechnologyIdsByCapacityId(capacity.getId())
                         .collectList()
@@ -94,7 +94,54 @@ public class CapacityUseCase implements ICapacityUseCase {
                                         .technologies(List.of())
                                         .build());
                             }
-                            
+
+                            return tecnologyDataRepository.findByIds(technologyIds)
+                                    .onErrorResume(error -> Flux.empty())
+                                    .map(techData -> TechnologyDTO.builder()
+                                            .id(techData.getId())
+                                            .name(techData.getName())
+                                            .build())
+                                    .collectList()
+                                    .map(technologies -> CapacityCompletedResponse.builder()
+                                            .id(capacity.getId())
+                                            .name(capacity.getName())
+                                            .description(capacity.getDescription())
+                                            .technologies(technologies)
+                                            .build());
+                        }));
+    }
+
+    @Override
+    public Mono<Capacity> findById(Long id) {
+        if (id == null || id <= 0) {
+            return Mono.error(new IllegalArgumentException(CapacityError.INVALID_ID.getMessage()));
+        }
+        return capacityRepository.findById(id)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException(CapacityError.NOT_FOUND.getMessage())));
+    }
+
+    @Override
+    public Flux<CapacityCompletedResponse> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Flux.error(new IllegalArgumentException(CapacityError.INVALID_ID.getMessage()));
+        }
+        boolean hasInvalidIds = ids.stream().anyMatch(id -> id == null || id <= 0);
+        if (hasInvalidIds) {
+            return Flux.error(new IllegalArgumentException(CapacityError.INVALID_ID.getMessage()));
+        }
+        return capacityRepository.findByIds(ids)
+                .concatMap(capacity -> capacityTechnologyRepository.findTechnologyIdsByCapacityId(capacity.getId())
+                        .collectList()
+                        .flatMap(technologyIds -> {
+                            if (technologyIds.isEmpty()) {
+                                return Mono.just(CapacityCompletedResponse.builder()
+                                        .id(capacity.getId())
+                                        .name(capacity.getName())
+                                        .description(capacity.getDescription())
+                                        .technologies(List.of())
+                                        .build());
+                            }
+
                             return tecnologyDataRepository.findByIds(technologyIds)
                                     .onErrorResume(error -> Flux.empty())
                                     .map(techData -> TechnologyDTO.builder()

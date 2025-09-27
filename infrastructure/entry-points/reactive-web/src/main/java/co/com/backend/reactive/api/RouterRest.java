@@ -1,6 +1,5 @@
 package co.com.backend.reactive.api;
 
-import co.com.backend.reactive.api.Handler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
@@ -12,8 +11,10 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 @Configuration
 public class RouterRest {
     @Bean
-    public RouterFunction<ServerResponse> routerFunction(Handler handler, Handler capacityHandler) {
-        return route(POST("/api/capacity"), capacityHandler::createCapacity)
-                .andRoute(GET("/api/capacity"), capacityHandler::getAllCapacitiesWithTechnologies);
+    public RouterFunction<ServerResponse> routerFunction(Handler handler) {
+        return route(POST("/api/capacity"), handler::createCapacity)
+                .andRoute(GET("/api/capacity"), handler::getAllCapacitiesWithTechnologies)
+                .andRoute(GET("/api/v1/capacity/batch"), handler::getCapacityByIds)
+                .andRoute(GET("/api/v1/capacity/{id}"), handler::getCapacityById);
     }
 }
