@@ -1,6 +1,7 @@
 package co.com.backend.reactive.api;
 
 import co.com.backend.reactive.usecase.capacity.CapacityUseCase;
+import co.com.backend.reactive.usecase.capacity.dto.CapacityCompletedResponse;
 import co.com.backend.reactive.api.dtos.request.CapacityRequestDTO;
 import co.com.backend.reactive.api.dtos.response.CapacityResponseDTO;
 import co.com.backend.reactive.api.dtos.response.BaseResponse;
@@ -55,8 +56,8 @@ public class Handler {
         return capacityUseCase.getAllCapacitiesWithTechnologies(page, size, sortBy, sortDirection)
                 .collectList()
                 .flatMap(response -> {
-                    BaseResponse<List<co.com.backend.reactive.usecase.capacity.dto.CapacityResponseDTO>> body = 
-                            BaseResponse.<List<co.com.backend.reactive.usecase.capacity.dto.CapacityResponseDTO>>builder()
+                    BaseResponse<List<CapacityCompletedResponse>> body = 
+                            BaseResponse.<List<CapacityCompletedResponse>>builder()
                             .status(200)
                             .message("Capacities retrieved successfully")
                             .path(path)

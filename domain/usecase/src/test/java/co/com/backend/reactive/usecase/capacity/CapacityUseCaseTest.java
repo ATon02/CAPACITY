@@ -6,7 +6,7 @@ import co.com.backend.reactive.model.capacitytechnology.CapacityTechnology;
 import co.com.backend.reactive.model.capacitytechnology.gateways.CapacityTechnologyRepository;
 import co.com.backend.reactive.model.tecnologydata.TecnologyData;
 import co.com.backend.reactive.model.tecnologydata.gateways.TecnologyDataRepository;
-import co.com.backend.reactive.usecase.capacity.dto.CapacityResponseDTO;
+import co.com.backend.reactive.usecase.capacity.dto.CapacityCompletedResponse;
 import co.com.backend.reactive.usecase.capacity.enums.CapacityError;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

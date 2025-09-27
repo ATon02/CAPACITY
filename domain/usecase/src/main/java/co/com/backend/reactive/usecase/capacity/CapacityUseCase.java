@@ -5,7 +5,7 @@ import co.com.backend.reactive.model.capacity.gateways.CapacityRepository;
 import co.com.backend.reactive.model.capacitytechnology.CapacityTechnology;
 import co.com.backend.reactive.model.capacitytechnology.gateways.CapacityTechnologyRepository;
 import co.com.backend.reactive.model.tecnologydata.gateways.TecnologyDataRepository;
-import co.com.backend.reactive.usecase.capacity.dto.CapacityResponseDTO;
+import co.com.backend.reactive.usecase.capacity.dto.CapacityCompletedResponse;
 import co.com.backend.reactive.usecase.capacity.dto.TechnologyDTO;
 import co.com.backend.reactive.usecase.capacity.utils.CapacityValidator;
 import co.com.backend.reactive.usecase.capacity.enums.CapacityError;
@@ -81,13 +81,13 @@ public class CapacityUseCase implements ICapacityUseCase {
     }
 
     @Override
-    public Flux<CapacityResponseDTO> getAllCapacitiesWithTechnologies(int page, int size, String sortBy, String sortDirection) {
+    public Flux<CapacityCompletedResponse> getAllCapacitiesWithTechnologies(int page, int size, String sortBy, String sortDirection) {
         return capacityRepository.findAllPaginated(page, size, sortBy, sortDirection)
                 .concatMap(capacity -> capacityTechnologyRepository.findTechnologyIdsByCapacityId(capacity.getId())
                         .collectList()
                         .flatMap(technologyIds -> {
                             if (technologyIds.isEmpty()) {
-                                return Mono.just(CapacityResponseDTO.builder()
+                                return Mono.just(CapacityCompletedResponse.builder()
                                         .id(capacity.getId())
                                         .name(capacity.getName())
                                         .description(capacity.getDescription())
@@ -102,7 +102,7 @@ public class CapacityUseCase implements ICapacityUseCase {
                                             .name(techData.getName())
                                             .build())
                                     .collectList()
-                                    .map(technologies -> CapacityResponseDTO.builder()
+                                    .map(technologies -> CapacityCompletedResponse.builder()
                                             .id(capacity.getId())
                                             .name(capacity.getName())
                                             .description(capacity.getDescription())

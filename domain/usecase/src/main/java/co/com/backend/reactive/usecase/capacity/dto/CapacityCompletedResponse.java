@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CapacityResponseDTO {
+public class CapacityCompletedResponse {
     private Long id;
     private String name;
     private String description;
