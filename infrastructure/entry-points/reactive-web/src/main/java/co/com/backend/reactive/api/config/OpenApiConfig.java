@@ -1,7 +1,7 @@
 package co.com.backend.reactive.api.config;
 
-import co.com.backend.reactive.api.capacity.dto.CapacityRequestDTO;
-import co.com.backend.reactive.api.capacity.dto.CapacityResponseDTO;
+import co.com.backend.reactive.api.dtos.request.CapacityRequestDTO;
+import co.com.backend.reactive.api.dtos.response.CapacityResponseDTO;
 import co.com.backend.reactive.api.dtos.response.ErrorResponse;
 import co.com.backend.reactive.api.dtos.response.BaseResponse;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -29,7 +29,7 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI apiInfo() {
-        return new OpenAPI().info(new Info().title("Tecnology API").version("v1"));
+        return new OpenAPI().info(new Info().title("Capacity Management API").version("v1"));
     }
 
     @Bean
@@ -49,18 +49,30 @@ public class OpenApiConfig {
                     .addSchemas("CapacityRequest", new Schema<CapacityRequestDTO>()
                             .addProperty("name", new StringSchema().maxLength(50))
                             .addProperty("description", new StringSchema().maxLength(90))
-                            .addProperty("technologies", new Schema()))
+                            .addProperty("technologies", new Schema<>().type("array")
+                                    .items(new Schema<>().type("integer").format("int64"))))
+                    .addSchemas("TechnologyDTO", new Schema<>()
+                            .addProperty("id", new Schema<>().type("integer").format("int64"))
+                            .addProperty("name", new StringSchema()))
                     .addSchemas("CapacityResponse", new Schema<CapacityResponseDTO>()
-                            .addProperty("id", new StringSchema())
+                            .addProperty("id", new Schema<>().type("integer").format("int64"))
                             .addProperty("name", new StringSchema())
                             .addProperty("description", new StringSchema())
-                            .addProperty("technologies", new Schema()))
+                            .addProperty("technologies", new Schema<>().type("array")
+                                    .items(new Schema<>().$ref("#/components/schemas/TechnologyDTO"))))
                     .addSchemas("CapacitySuccessResponse", new Schema<BaseResponse<CapacityResponseDTO>>()
                             .addProperty("status", new IntegerSchema().format("int32"))
                             .addProperty("message", new StringSchema())
                             .addProperty("path", new StringSchema())
                             .addProperty("timestamp", new StringSchema().format("date-time"))
                             .addProperty("data", new Schema<>().$ref("#/components/schemas/CapacityResponse")))
+                    .addSchemas("CapacityListSuccessResponse", new Schema<>()
+                            .addProperty("status", new IntegerSchema().format("int32"))
+                            .addProperty("message", new StringSchema())
+                            .addProperty("path", new StringSchema())
+                            .addProperty("timestamp", new StringSchema().format("date-time"))
+                            .addProperty("data", new Schema<>().type("array")
+                                    .items(new Schema<>().$ref("#/components/schemas/CapacityResponse"))))
                     .addSchemas("ErrorResponse", new Schema<ErrorResponse>()
                             .addProperty("status", new IntegerSchema().format("int32"))
                             .addProperty("message", new StringSchema())
@@ -86,6 +98,41 @@ public class OpenApiConfig {
                                                             .schema(new Schema<>().$ref("#/components/schemas/CapacitySuccessResponse")))))
                                     .addApiResponse("400", new ApiResponse()
                                             .description("Validation error")
+                                            .content(new Content().addMediaType("application/json",
+                                                    new io.swagger.v3.oas.models.media.MediaType()
+                                                            .schema(new Schema<>().$ref("#/components/schemas/ErrorResponse"))))))
+                    )
+                    .get(new Operation()
+                            .operationId("getAllCapacitiesWithTechnologies")
+                            .tags(List.of("Capacity"))
+                            .summary("Get all capacities with technologies paginated")
+                            .description("Retrieves all capacities along with their associated technologies, with pagination and sorting support")
+                            .addParametersItem(new Parameter()
+                                    .name("page")
+                                    .in("query")
+                                    .required(false)
+                                    .description("Page number (starts at 0)")
+                                    .schema(new IntegerSchema().minimum(java.math.BigDecimal.ZERO)._default(0)))
+                            .addParametersItem(new Parameter()
+                                    .name("size")
+                                    .in("query")
+                                    .required(false)
+                                    .description("Number of items per page")
+                                    .schema(new IntegerSchema().minimum(java.math.BigDecimal.ONE).maximum(java.math.BigDecimal.valueOf(100))._default(10)))
+                            .addParametersItem(new Parameter()
+                                    .name("sort")
+                                    .in("query")
+                                    .required(false)
+                                    .description("Sort field and direction. Format: field,direction. Valid fields: 'name', 'tech_count'. Direction: 'asc', 'desc'. Example: 'name,asc' or 'tech_count,desc'")
+                                    .schema(new StringSchema()._default("name,asc")))
+                            .responses(new ApiResponses()
+                                    .addApiResponse("200", new ApiResponse()
+                                            .description("Capacities with technologies retrieved successfully")
+                                            .content(new Content().addMediaType("application/json",
+                                                    new io.swagger.v3.oas.models.media.MediaType()
+                                                            .schema(new Schema<>().$ref("#/components/schemas/CapacityListSuccessResponse")))))
+                                    .addApiResponse("400", new ApiResponse()
+                                            .description("Invalid pagination or sorting parameters")
                                             .content(new Content().addMediaType("application/json",
                                                     new io.swagger.v3.oas.models.media.MediaType()
                                                             .schema(new Schema<>().$ref("#/components/schemas/ErrorResponse"))))))

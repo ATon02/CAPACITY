@@ -13,6 +13,7 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -34,6 +35,33 @@ public class Handler {
                             .path(path)
                             .timestamp(LocalDateTime.now())
                             .data(capacity)
+                            .build();
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(body);
+                });
+    }
+
+    public Mono<ServerResponse> getAllCapacitiesWithTechnologies(ServerRequest serverRequest) {
+        String path = serverRequest.path();
+        int page = Integer.parseInt(serverRequest.queryParam("page").orElse("0"));
+        int size = Integer.parseInt(serverRequest.queryParam("size").orElse("10"));
+        String sort = serverRequest.queryParam("sort").orElse("name,asc");
+        
+        String[] sortParts = sort.split(",");
+        String sortBy = sortParts.length > 0 ? sortParts[0] : "name";
+        String sortDirection = sortParts.length > 1 ? sortParts[1] : "asc";
+
+        return capacityUseCase.getAllCapacitiesWithTechnologies(page, size, sortBy, sortDirection)
+                .collectList()
+                .flatMap(response -> {
+                    BaseResponse<List<co.com.backend.reactive.usecase.capacity.dto.CapacityResponseDTO>> body = 
+                            BaseResponse.<List<co.com.backend.reactive.usecase.capacity.dto.CapacityResponseDTO>>builder()
+                            .status(200)
+                            .message("Capacities retrieved successfully")
+                            .path(path)
+                            .timestamp(LocalDateTime.now())
+                            .data(response)
                             .build();
                     return ServerResponse.ok()
                             .contentType(MediaType.APPLICATION_JSON)

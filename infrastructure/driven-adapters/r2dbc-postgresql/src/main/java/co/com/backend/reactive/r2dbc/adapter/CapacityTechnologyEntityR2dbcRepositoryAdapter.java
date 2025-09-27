@@ -7,6 +7,7 @@ import co.com.backend.reactive.r2dbc.helper.ReactiveAdapterOperations;
 import co.com.backend.reactive.r2dbc.repository.CapacityTechnologyR2dbcRepository;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Repository
@@ -26,4 +27,8 @@ public class CapacityTechnologyEntityR2dbcRepositoryAdapter extends ReactiveAdap
         return super.save(capacityTechnology);
     }
 
+    @Override
+    public Flux<Long> findTechnologyIdsByCapacityId(Long capacityId) {
+        return repository.findTechnologyIdsByCapacityId(capacityId);
+    }
 }

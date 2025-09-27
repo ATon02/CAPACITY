@@ -1,6 +1,10 @@
 package co.com.backend.reactive.config;
 
+import co.com.backend.reactive.model.capacity.gateways.CapacityRepository;
+import co.com.backend.reactive.model.capacitytechnology.gateways.CapacityTechnologyRepository;
+import co.com.backend.reactive.model.tecnologydata.gateways.TecnologyDataRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,13 +26,28 @@ public class UseCasesConfigTest {
                 }
             }
 
-            assertTrue(useCaseBeanFound, "No beans ending with 'Use Case' were found");
+            assertTrue(useCaseBeanFound, "No beans ending with 'UseCase' were found");
         }
     }
 
     @Configuration
     @Import(UseCasesConfig.class)
     static class TestConfig {
+
+        @Bean
+        public CapacityRepository capacityRepository() {
+            return Mockito.mock(CapacityRepository.class);
+        }
+
+        @Bean
+        public CapacityTechnologyRepository capacityTechnologyRepository() {
+            return Mockito.mock(CapacityTechnologyRepository.class);
+        }
+
+        @Bean
+        public TecnologyDataRepository tecnologyDataRepository() {
+            return Mockito.mock(TecnologyDataRepository.class);
+        }
 
         @Bean
         public MyUseCase myUseCase() {

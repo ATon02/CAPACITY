@@ -8,6 +8,7 @@ import co.com.backend.reactive.r2dbc.repository.CapacityR2dbcRepository;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
 @Repository
 public class CapacityR2dbcRepositoryAdapter extends ReactiveAdapterOperations<
@@ -24,5 +25,12 @@ public class CapacityR2dbcRepositoryAdapter extends ReactiveAdapterOperations<
     @Override
     public Mono<Capacity> save(Capacity capacity) {
         return super.save(capacity);
+    }
+
+    @Override
+    public Flux<Capacity> findAllPaginated(int page, int size, String sortBy, String sortDirection) {
+        int offset = page * size;
+        return repository.findAllPaginated(offset, size, sortBy, sortDirection)
+                .map(this::toEntity);
     }
 }

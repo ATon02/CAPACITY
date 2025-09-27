@@ -4,16 +4,20 @@ import co.com.backend.reactive.model.capacity.Capacity;
 import co.com.backend.reactive.model.capacity.gateways.CapacityRepository;
 import co.com.backend.reactive.model.capacitytechnology.CapacityTechnology;
 import co.com.backend.reactive.model.capacitytechnology.gateways.CapacityTechnologyRepository;
+import co.com.backend.reactive.model.tecnologydata.TecnologyData;
 import co.com.backend.reactive.model.tecnologydata.gateways.TecnologyDataRepository;
+import co.com.backend.reactive.usecase.capacity.dto.CapacityResponseDTO;
 import co.com.backend.reactive.usecase.capacity.enums.CapacityError;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.util.List;
 import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -145,42 +149,6 @@ class CapacityUseCaseTest {
     }
 
     @Test
-    void save_error_whenTechnologiesIsNull() {
-        Capacity capacity = Capacity.builder()
-                .name("Backend Development")
-                .description("Backend development capacity")
-                .technologies(null)
-                .build();
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.TECHNOLOGIES_REQUIRED.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(tecnologyDataRepository, never()).existsById(anyLong());
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
-    void save_error_whenTechnologiesIsEmpty() {
-        Capacity capacity = Capacity.builder()
-                .name("Backend Development")
-                .description("Backend development capacity")
-                .technologies(Set.of())
-                .build();
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.TECHNOLOGIES_REQUIRED.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(tecnologyDataRepository, never()).existsById(anyLong());
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
     void save_error_whenTechnologiesLessThanMinimum() {
         Capacity capacity = Capacity.builder()
                 .name("Backend Development")
@@ -215,51 +183,6 @@ class CapacityUseCaseTest {
                 .verify();
 
         verify(tecnologyDataRepository, never()).existsById(anyLong());
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
-    void save_error_whenTechnologyNotFound() {
-        Capacity capacity = Capacity.builder()
-                .name("Backend Development")
-                .description("Backend development capacity")
-                .technologies(Set.of(1L, 2L, 999L))
-                .build();
-
-        when(tecnologyDataRepository.existsById(1L)).thenReturn(Mono.just(true));
-        when(tecnologyDataRepository.existsById(2L)).thenReturn(Mono.just(true));
-        when(tecnologyDataRepository.existsById(999L)).thenReturn(Mono.just(false));
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && ex.getMessage().contains(CapacityError.TECHNOLOGY_NOT_FOUND.getMessage()))
-                .verify();
-
-        verify(tecnologyDataRepository).existsById(1L);
-        verify(tecnologyDataRepository).existsById(2L);
-        verify(tecnologyDataRepository).existsById(999L);
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
-    void save_error_whenTechnologyServiceFails() {
-        Capacity capacity = Capacity.builder()
-                .name("Backend Development")
-                .description("Backend development capacity")
-                .technologies(Set.of(1L, 2L, 3L))
-                .build();
-
-        when(tecnologyDataRepository.existsById(1L)).thenReturn(Mono.just(true));
-        when(tecnologyDataRepository.existsById(2L)).thenReturn(Mono.error(new RuntimeException("Service unavailable")));
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof RuntimeException && ex.getMessage().equals("Service unavailable"))
-                .verify();
-
-        verify(tecnologyDataRepository).existsById(1L);
-        verify(tecnologyDataRepository).existsById(2L);
         verify(capacityRepository, never()).save(any());
         verify(capacityTechnologyRepository, never()).save(any());
     }
@@ -399,25 +322,169 @@ class CapacityUseCaseTest {
     }
 
     @Test
-    void save_error_whenMultipleTechnologiesNotFound() {
-        Capacity capacity = Capacity.builder()
+    void getAllCapacitiesWithTechnologies_ok_whenCapacitiesExist() {
+        Capacity capacity1 = Capacity.builder()
+                .id(1L)
                 .name("Backend Development")
                 .description("Backend development capacity")
-                .technologies(Set.of(1L, 998L, 999L))
                 .build();
 
-        when(tecnologyDataRepository.existsById(1L)).thenReturn(Mono.just(true));
-        when(tecnologyDataRepository.existsById(998L)).thenReturn(Mono.just(false));
-        when(tecnologyDataRepository.existsById(999L)).thenReturn(Mono.just(false));
+        Capacity capacity2 = Capacity.builder()
+                .id(2L)
+                .name("Frontend Development")
+                .description("Frontend development capacity")
+                .build();
 
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && ex.getMessage().contains(CapacityError.TECHNOLOGY_NOT_FOUND.getMessage()))
-                .verify();
+        TecnologyData tech1 = TecnologyData.builder()
+                .id(1L)
+                .name("Java")
+                .build();
 
-        verify(tecnologyDataRepository).existsById(1L);
-        verify(tecnologyDataRepository).existsById(998L);
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
+        TecnologyData tech2 = TecnologyData.builder()
+                .id(2L)
+                .name("React")
+                .build();
+
+        when(capacityRepository.findAllPaginated(0, 10, "name", "asc"))
+                .thenReturn(Flux.just(capacity1, capacity2));
+        when(capacityTechnologyRepository.findTechnologyIdsByCapacityId(1L))
+                .thenReturn(Flux.just(1L));
+        when(capacityTechnologyRepository.findTechnologyIdsByCapacityId(2L))
+                .thenReturn(Flux.just(2L));
+        when(tecnologyDataRepository.findByIds(List.of(1L)))
+                .thenReturn(Flux.just(tech1));
+        when(tecnologyDataRepository.findByIds(List.of(2L)))
+                .thenReturn(Flux.just(tech2));
+
+        StepVerifier.create(useCase.getAllCapacitiesWithTechnologies(0, 10, "name", "asc"))
+                .assertNext(response -> {
+                    assert response.getId().equals(1L);
+                    assert response.getName().equals("Backend Development");
+                    assert response.getDescription().equals("Backend development capacity");
+                    assert response.getTechnologies().size() == 1;
+                    assert response.getTechnologies().get(0).getId().equals(1L);
+                    assert response.getTechnologies().get(0).getName().equals("Java");
+                })
+                .assertNext(response -> {
+                    assert response.getId().equals(2L);
+                    assert response.getName().equals("Frontend Development");
+                    assert response.getDescription().equals("Frontend development capacity");
+                    assert response.getTechnologies().size() == 1;
+                    assert response.getTechnologies().get(0).getId().equals(2L);
+                    assert response.getTechnologies().get(0).getName().equals("React");
+                })
+                .verifyComplete();
+
+        verify(capacityRepository).findAllPaginated(0, 10, "name", "asc");
+        verify(capacityTechnologyRepository).findTechnologyIdsByCapacityId(1L);
+        verify(capacityTechnologyRepository).findTechnologyIdsByCapacityId(2L);
+        verify(tecnologyDataRepository).findByIds(List.of(1L));
+        verify(tecnologyDataRepository).findByIds(List.of(2L));
     }
+
+    @Test
+    void getAllCapacitiesWithTechnologies_ok_whenCapacityHasNoTechnologies() {
+        Capacity capacity = Capacity.builder()
+                .id(1L)
+                .name("Data Science")
+                .description("Data science capacity")
+                .build();
+
+        when(capacityRepository.findAllPaginated(0, 10, "name", "asc"))
+                .thenReturn(Flux.just(capacity));
+        when(capacityTechnologyRepository.findTechnologyIdsByCapacityId(1L))
+                .thenReturn(Flux.empty());
+
+        StepVerifier.create(useCase.getAllCapacitiesWithTechnologies(0, 10, "name", "asc"))
+                .assertNext(response -> {
+                    assert response.getId().equals(1L);
+                    assert response.getName().equals("Data Science");
+                    assert response.getDescription().equals("Data science capacity");
+                    assert response.getTechnologies().isEmpty();
+                })
+                .verifyComplete();
+
+        verify(capacityRepository).findAllPaginated(0, 10, "name", "asc");
+        verify(capacityTechnologyRepository).findTechnologyIdsByCapacityId(1L);
+        verify(tecnologyDataRepository, never()).findByIds(any());
+    }
+
+    @Test
+    void getAllCapacitiesWithTechnologies_ok_whenTechnologyServiceFails() {
+        Capacity capacity = Capacity.builder()
+                .id(1L)
+                .name("Backend Development")
+                .description("Backend development capacity")
+                .build();
+
+        when(capacityRepository.findAllPaginated(0, 10, "name", "asc"))
+                .thenReturn(Flux.just(capacity));
+        when(capacityTechnologyRepository.findTechnologyIdsByCapacityId(1L))
+                .thenReturn(Flux.just(1L, 2L));
+        when(tecnologyDataRepository.findByIds(List.of(1L, 2L)))
+                .thenReturn(Flux.error(new RuntimeException("Technology service unavailable")));
+
+        StepVerifier.create(useCase.getAllCapacitiesWithTechnologies(0, 10, "name", "asc"))
+                .assertNext(response -> {
+                    assert response.getId().equals(1L);
+                    assert response.getName().equals("Backend Development");
+                    assert response.getDescription().equals("Backend development capacity");
+                    assert response.getTechnologies().isEmpty();
+                })
+                .verifyComplete();
+
+        verify(capacityRepository).findAllPaginated(0, 10, "name", "asc");
+        verify(capacityTechnologyRepository).findTechnologyIdsByCapacityId(1L);
+        verify(tecnologyDataRepository).findByIds(List.of(1L, 2L));
+    }
+
+    @Test
+    void getAllCapacitiesWithTechnologies_ok_whenNoCapacitiesExist() {
+        when(capacityRepository.findAllPaginated(0, 10, "name", "asc"))
+                .thenReturn(Flux.empty());
+
+        StepVerifier.create(useCase.getAllCapacitiesWithTechnologies(0, 10, "name", "asc"))
+                .verifyComplete();
+
+        verify(capacityRepository).findAllPaginated(0, 10, "name", "asc");
+        verify(capacityTechnologyRepository, never()).findTechnologyIdsByCapacityId(anyLong());
+        verify(tecnologyDataRepository, never()).findByIds(any());
+    }
+
+    @Test
+    void getAllCapacitiesWithTechnologies_ok_withDifferentSortingParameters() {
+        Capacity capacity = Capacity.builder()
+                .id(1L)
+                .name("DevOps")
+                .description("DevOps capacity")
+                .build();
+
+        TecnologyData tech = TecnologyData.builder()
+                .id(1L)
+                .name("Docker")
+                .build();
+
+        when(capacityRepository.findAllPaginated(1, 5, "tech_count", "desc"))
+                .thenReturn(Flux.just(capacity));
+        when(capacityTechnologyRepository.findTechnologyIdsByCapacityId(1L))
+                .thenReturn(Flux.just(1L));
+        when(tecnologyDataRepository.findByIds(List.of(1L)))
+                .thenReturn(Flux.just(tech));
+
+        StepVerifier.create(useCase.getAllCapacitiesWithTechnologies(1, 5, "tech_count", "desc"))
+                .assertNext(response -> {
+                    assert response.getId().equals(1L);
+                    assert response.getName().equals("DevOps");
+                    assert response.getDescription().equals("DevOps capacity");
+                    assert response.getTechnologies().size() == 1;
+                    assert response.getTechnologies().get(0).getId().equals(1L);
+                    assert response.getTechnologies().get(0).getName().equals("Docker");
+                })
+                .verifyComplete();
+
+        verify(capacityRepository).findAllPaginated(1, 5, "tech_count", "desc");
+        verify(capacityTechnologyRepository).findTechnologyIdsByCapacityId(1L);
+        verify(tecnologyDataRepository).findByIds(List.of(1L));
+    }
+
 }

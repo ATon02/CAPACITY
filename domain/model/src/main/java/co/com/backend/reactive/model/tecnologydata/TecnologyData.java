@@ -13,5 +13,4 @@ import lombok.Setter;
 public class TecnologyData {
     private Long id;
     private String name;
-    private String description;
 }

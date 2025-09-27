@@ -5,12 +5,16 @@ import co.com.backend.reactive.model.capacity.gateways.CapacityRepository;
 import co.com.backend.reactive.model.capacitytechnology.CapacityTechnology;
 import co.com.backend.reactive.model.capacitytechnology.gateways.CapacityTechnologyRepository;
 import co.com.backend.reactive.model.tecnologydata.gateways.TecnologyDataRepository;
+import co.com.backend.reactive.usecase.capacity.dto.CapacityResponseDTO;
+import co.com.backend.reactive.usecase.capacity.dto.TechnologyDTO;
 import co.com.backend.reactive.usecase.capacity.utils.CapacityValidator;
 import co.com.backend.reactive.usecase.capacity.enums.CapacityError;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class CapacityUseCase implements ICapacityUseCase {
@@ -19,6 +23,7 @@ public class CapacityUseCase implements ICapacityUseCase {
     private final CapacityTechnologyRepository capacityTechnologyRepository;
     private final TecnologyDataRepository tecnologyDataRepository;
 
+    @Override
     public Mono<Capacity> save(Capacity capacity) {
         return CapacityValidator.validateForSave(capacity)
                 .flatMap(validatedCapacity -> validateAndCreateTechnologies(validatedCapacity))
@@ -73,5 +78,36 @@ public class CapacityUseCase implements ICapacityUseCase {
                     return capacityTechnologyRepository.save(capacityTechnology);
                 })
                 .then();
+    }
+
+    @Override
+    public Flux<CapacityResponseDTO> getAllCapacitiesWithTechnologies(int page, int size, String sortBy, String sortDirection) {
+        return capacityRepository.findAllPaginated(page, size, sortBy, sortDirection)
+                .concatMap(capacity -> capacityTechnologyRepository.findTechnologyIdsByCapacityId(capacity.getId())
+                        .collectList()
+                        .flatMap(technologyIds -> {
+                            if (technologyIds.isEmpty()) {
+                                return Mono.just(CapacityResponseDTO.builder()
+                                        .id(capacity.getId())
+                                        .name(capacity.getName())
+                                        .description(capacity.getDescription())
+                                        .technologies(List.of())
+                                        .build());
+                            }
+                            
+                            return tecnologyDataRepository.findByIds(technologyIds)
+                                    .onErrorResume(error -> Flux.empty())
+                                    .map(techData -> TechnologyDTO.builder()
+                                            .id(techData.getId())
+                                            .name(techData.getName())
+                                            .build())
+                                    .collectList()
+                                    .map(technologies -> CapacityResponseDTO.builder()
+                                            .id(capacity.getId())
+                                            .name(capacity.getName())
+                                            .description(capacity.getDescription())
+                                            .technologies(technologies)
+                                            .build());
+                        }));
     }
 }

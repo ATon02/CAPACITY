@@ -6,4 +6,5 @@ import reactor.core.publisher.Mono;
 
 public interface CapacityRepository {
     Mono<Capacity> save(Capacity capacity);
+    Flux<Capacity> findAllPaginated(int page, int size, String sortBy, String sortDirection);
 }

@@ -13,6 +13,7 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 public class RouterRest {
     @Bean
     public RouterFunction<ServerResponse> routerFunction(Handler handler, Handler capacityHandler) {
-        return route(POST("/api/capacity"), capacityHandler::createCapacity);
+        return route(POST("/api/capacity"), capacityHandler::createCapacity)
+                .andRoute(GET("/api/capacity"), capacityHandler::getAllCapacitiesWithTechnologies);
     }
 }
