@@ -157,4 +157,42 @@ public class CapacityUseCase implements ICapacityUseCase {
                                             .build());
                         }));
     }
+
+    @Override
+    public Mono<Void> deleteCapacities(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Mono.error(new IllegalArgumentException(CapacityError.INVALID_ID.getMessage()));
+        }
+        boolean hasInvalidIds = ids.stream().anyMatch(id -> id == null || id <= 0);
+        if (hasInvalidIds) {
+            return Mono.error(new IllegalArgumentException(CapacityError.INVALID_ID.getMessage()));
+        }
+        
+        return Flux.fromIterable(ids)
+                .flatMap(capacityTechnologyRepository::findTechnologyIdsByCapacityId)
+                .distinct()
+                .collectList()
+                .flatMap(this::findSingleTecnologies)
+                .flatMap(singleTechnologyIds -> {
+                    return capacityTechnologyRepository.deleteByCapacityIds(ids)
+                            .then(Mono.defer(() -> {
+                                if (!singleTechnologyIds.isEmpty()) {
+                                    return tecnologyDataRepository.deleteByIds(singleTechnologyIds)
+                                            .then(capacityRepository.deleteCapacitiesByIds(ids));
+                                } else {
+                                    return capacityRepository.deleteCapacitiesByIds(ids);
+                                }
+                            }));
+                });
+    }
+
+    private Mono<List<Long>> findSingleTecnologies(List<Long> technologyIds) {
+        return Flux.fromIterable(technologyIds)
+                .filterWhen(technologyId -> 
+                    capacityTechnologyRepository.countCapacitiesByTechnologyId(technologyId)
+                            .map(count -> count == 1)
+                )
+                .collectList();
+    }
+
 }

@@ -46,4 +46,9 @@ public class CapacityR2dbcRepositoryAdapter extends ReactiveAdapterOperations<
     public Flux<Capacity> findByIds(List<Long> ids) {
         return repository.findAllById(ids).map(this::toEntity);
     }
+
+    @Override
+    public Mono<Void> deleteCapacitiesByIds(List<Long> ids) {
+        return repository.deleteAllById(ids).then();
+    }
 }

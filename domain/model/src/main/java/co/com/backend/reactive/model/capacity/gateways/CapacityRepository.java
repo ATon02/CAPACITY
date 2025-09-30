@@ -11,4 +11,5 @@ public interface CapacityRepository {
     Flux<Capacity> findAllPaginated(int page, int size, String sortBy, String sortDirection);
     Mono<Capacity> findById(Long id);
     Flux<Capacity> findByIds(List<Long> ids);
+    Mono<Void> deleteCapacitiesByIds(List<Long> ids);
 }

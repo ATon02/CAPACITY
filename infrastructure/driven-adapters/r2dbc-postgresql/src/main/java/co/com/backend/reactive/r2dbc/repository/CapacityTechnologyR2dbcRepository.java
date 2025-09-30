@@ -7,6 +7,7 @@ import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import java.util.List;
 
 @Repository
 public interface CapacityTechnologyR2dbcRepository extends ReactiveCrudRepository<CapacityTechnologyEntity, Long>, ReactiveQueryByExampleExecutor<CapacityTechnologyEntity> {
@@ -15,4 +16,10 @@ public interface CapacityTechnologyR2dbcRepository extends ReactiveCrudRepositor
     
     @Query("SELECT technology_id FROM capacity_technology WHERE capacity_id = :capacityId")
     Flux<Long> findTechnologyIdsByCapacityId(Long capacityId);
+    
+    @Query("SELECT COUNT(*) FROM capacity_technology WHERE technology_id = :technologyId")
+    Mono<Long> countCapacitiesByTechnologyId(Long technologyId);
+    
+    @Query("DELETE FROM capacity_technology WHERE capacity_id IN (:capacityIds)")
+    Mono<Void> deleteByCapacityIds(List<Long> capacityIds);
 }

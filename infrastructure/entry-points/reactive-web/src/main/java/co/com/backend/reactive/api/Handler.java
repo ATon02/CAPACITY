@@ -124,5 +124,33 @@ public class Handler {
                 });
     }
 
+    public Mono<ServerResponse> deleteCapacities(ServerRequest request) {
+        String idsParam = request.queryParam("ids").orElse("");
+        return Mono.fromCallable(() -> {
+                    if (idsParam.isEmpty()) {
+                        throw new IllegalArgumentException("IDs parameter is required");
+                    }
+                    return Arrays.stream(idsParam.split(","))
+                            .map(String::trim)
+                            .map(Long::parseLong)
+                            .collect(Collectors.toList());
+                })
+                .onErrorMap(NumberFormatException.class, 
+                    ex -> new IllegalArgumentException("Invalid ID format in parameters"))
+                .flatMap(capacityUseCase::deleteCapacities)
+                .then(Mono.defer(() -> {
+                    BaseResponse<Void> body = BaseResponse.<Void>builder()
+                            .status(200)
+                            .message("Capacities deleted successfully")
+                            .path(request.path())
+                            .timestamp(LocalDateTime.now())
+                            .data(null)
+                            .build();
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(body);
+                }));
+    }
+
 }
 

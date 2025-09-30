@@ -15,6 +15,7 @@ public class RouterRest {
         return route(POST("/api/capacity"), handler::createCapacity)
                 .andRoute(GET("/api/capacity"), handler::getAllCapacitiesWithTechnologies)
                 .andRoute(GET("/api/v1/capacity/batch"), handler::getCapacityByIds)
-                .andRoute(GET("/api/v1/capacity/{id}"), handler::getCapacityById);
+                .andRoute(GET("/api/v1/capacity/{id}"), handler::getCapacityById)
+                .andRoute(DELETE("/api/v1/capacity"), handler::deleteCapacities);
     }
 }

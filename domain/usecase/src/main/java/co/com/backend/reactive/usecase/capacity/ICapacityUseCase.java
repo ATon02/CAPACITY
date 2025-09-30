@@ -12,4 +12,6 @@ public interface ICapacityUseCase {
     Flux<CapacityCompletedResponse> getAllCapacitiesWithTechnologies(int page, int size, String sortBy, String sortDirection);
     Mono<Capacity> findById(Long id);
     Flux<CapacityCompletedResponse> findByIds(List<Long> ids);
+    Mono<Void> deleteCapacities(List<Long> ids);
+
 }
