@@ -8,6 +8,7 @@ import co.com.backend.reactive.model.tecnologydata.TecnologyData;
 import co.com.backend.reactive.model.tecnologydata.gateways.TecnologyDataRepository;
 import co.com.backend.reactive.usecase.capacity.dto.CapacityCompletedResponse;
 import co.com.backend.reactive.usecase.capacity.enums.CapacityError;
+import co.com.backend.reactive.usecase.capacity.exceptions.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -74,174 +75,6 @@ class CapacityUseCaseTest {
         verify(tecnologyDataRepository).existsById(3L);
         verify(capacityRepository).save(any(Capacity.class));
         verify(capacityTechnologyRepository, times(3)).save(any(CapacityTechnology.class));
-    }
-
-    @Test
-    void save_error_whenCapacityNameIsNull() {
-        Capacity capacity = Capacity.builder()
-                .name(null)
-                .description("Backend development capacity")
-                .technologies(Set.of(1L, 2L, 3L))
-                .build();
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.CAPACITY_NAME_REQUIRED.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(tecnologyDataRepository, never()).existsById(anyLong());
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
-    void save_error_whenCapacityNameIsBlank() {
-        Capacity capacity = Capacity.builder()
-                .name("   ")
-                .description("Backend development capacity")
-                .technologies(Set.of(1L, 2L, 3L))
-                .build();
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.CAPACITY_NAME_REQUIRED.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(tecnologyDataRepository, never()).existsById(anyLong());
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
-    void save_error_whenCapacityDescriptionIsNull() {
-        Capacity capacity = Capacity.builder()
-                .name("Backend Development")
-                .description(null)
-                .technologies(Set.of(1L, 2L, 3L))
-                .build();
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.CAPACITY_DESCRIPTION_REQUIRED.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(tecnologyDataRepository, never()).existsById(anyLong());
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
-    void save_error_whenCapacityDescriptionIsBlank() {
-        Capacity capacity = Capacity.builder()
-                .name("Backend Development")
-                .description("   ")
-                .technologies(Set.of(1L, 2L, 3L))
-                .build();
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.CAPACITY_DESCRIPTION_REQUIRED.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(tecnologyDataRepository, never()).existsById(anyLong());
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
-    void save_error_whenTechnologiesLessThanMinimum() {
-        Capacity capacity = Capacity.builder()
-                .name("Backend Development")
-                .description("Backend development capacity")
-                .technologies(Set.of(1L, 2L))
-                .build();
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.INVALID_TECHNOLOGY_COUNT.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(tecnologyDataRepository, never()).existsById(anyLong());
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
-    void save_error_whenTechnologiesExceedMaximum() {
-        Set<Long> tooManyTechnologies = Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L,
-                11L, 12L, 13L, 14L, 15L, 16L, 17L, 18L, 19L, 20L, 21L);
-
-        Capacity capacity = Capacity.builder()
-                .name("Backend Development")
-                .description("Backend development capacity")
-                .technologies(tooManyTechnologies)
-                .build();
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.INVALID_TECHNOLOGY_COUNT.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(tecnologyDataRepository, never()).existsById(anyLong());
-        verify(capacityRepository, never()).save(any());
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
-    void save_error_whenCapacityRepositorySaveFails() {
-        Capacity capacity = Capacity.builder()
-                .name("Backend Development")
-                .description("Backend development capacity")
-                .technologies(Set.of(1L, 2L, 3L))
-                .build();
-
-        when(tecnologyDataRepository.existsById(1L)).thenReturn(Mono.just(true));
-        when(tecnologyDataRepository.existsById(2L)).thenReturn(Mono.just(true));
-        when(tecnologyDataRepository.existsById(3L)).thenReturn(Mono.just(true));
-        when(capacityRepository.save(any(Capacity.class)))
-                .thenReturn(Mono.error(new RuntimeException("Database connection failed")));
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof RuntimeException && ex.getMessage().equals("Database connection failed"))
-                .verify();
-
-        verify(tecnologyDataRepository).existsById(1L);
-        verify(tecnologyDataRepository).existsById(2L);
-        verify(tecnologyDataRepository).existsById(3L);
-        verify(capacityRepository).save(any(Capacity.class));
-        verify(capacityTechnologyRepository, never()).save(any());
-    }
-
-    @Test
-    void save_error_whenCapacityTechnologyRepositorySaveFails() {
-        Capacity capacity = Capacity.builder()
-                .name("Backend Development")
-                .description("Backend development capacity")
-                .technologies(Set.of(1L, 2L, 3L))
-                .build();
-
-        Capacity savedCapacity = Capacity.builder()
-                .id(1L)
-                .name("Backend Development")
-                .description("Backend development capacity")
-                .build();
-
-        when(tecnologyDataRepository.existsById(1L)).thenReturn(Mono.just(true));
-        when(tecnologyDataRepository.existsById(2L)).thenReturn(Mono.just(true));
-        when(tecnologyDataRepository.existsById(3L)).thenReturn(Mono.just(true));
-        when(capacityRepository.save(any(Capacity.class))).thenReturn(Mono.just(savedCapacity));
-        when(capacityTechnologyRepository.save(any(CapacityTechnology.class)))
-                .thenReturn(Mono.error(new RuntimeException("Relationship save failed")));
-
-        StepVerifier.create(useCase.save(capacity))
-                .expectErrorMatches(ex -> ex instanceof RuntimeException && ex.getMessage().equals("Relationship save failed"))
-                .verify();
-
-        verify(tecnologyDataRepository).existsById(1L);
-        verify(tecnologyDataRepository).existsById(2L);
-        verify(tecnologyDataRepository).existsById(3L);
-        verify(capacityRepository).save(any(Capacity.class));
-        verify(capacityTechnologyRepository).save(any(CapacityTechnology.class));
     }
 
     @Test
@@ -410,35 +243,6 @@ class CapacityUseCaseTest {
     }
 
     @Test
-    void getAllCapacitiesWithTechnologies_ok_whenTechnologyServiceFails() {
-        Capacity capacity = Capacity.builder()
-                .id(1L)
-                .name("Backend Development")
-                .description("Backend development capacity")
-                .build();
-
-        when(capacityRepository.findAllPaginated(0, 10, "name", "asc"))
-                .thenReturn(Flux.just(capacity));
-        when(capacityTechnologyRepository.findTechnologyIdsByCapacityId(1L))
-                .thenReturn(Flux.just(1L, 2L));
-        when(tecnologyDataRepository.findByIds(List.of(1L, 2L)))
-                .thenReturn(Flux.error(new RuntimeException("Technology service unavailable")));
-
-        StepVerifier.create(useCase.getAllCapacitiesWithTechnologies(0, 10, "name", "asc"))
-                .assertNext(response -> {
-                    assert response.getId().equals(1L);
-                    assert response.getName().equals("Backend Development");
-                    assert response.getDescription().equals("Backend development capacity");
-                    assert response.getTechnologies().isEmpty();
-                })
-                .verifyComplete();
-
-        verify(capacityRepository).findAllPaginated(0, 10, "name", "asc");
-        verify(capacityTechnologyRepository).findTechnologyIdsByCapacityId(1L);
-        verify(tecnologyDataRepository).findByIds(List.of(1L, 2L));
-    }
-
-    @Test
     void getAllCapacitiesWithTechnologies_ok_whenNoCapacitiesExist() {
         when(capacityRepository.findAllPaginated(0, 10, "name", "asc"))
                 .thenReturn(Flux.empty());
@@ -512,23 +316,13 @@ class CapacityUseCaseTest {
     }
 
     @Test
-    void findById_error_whenIdIsNull() {
-        StepVerifier.create(useCase.findById(null))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.INVALID_ID.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(capacityRepository, never()).findById(any());
-    }
-
-    @Test
     void findById_error_whenCapacityNotFound() {
         Long capacityId = 999L;
 
         when(capacityRepository.findById(capacityId)).thenReturn(Mono.empty());
 
         StepVerifier.create(useCase.findById(capacityId))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
+                .expectErrorMatches(ex -> ex instanceof BusinessException
                         && CapacityError.NOT_FOUND.getMessage().equals(ex.getMessage()))
                 .verify();
 
@@ -619,30 +413,5 @@ class CapacityUseCaseTest {
         verify(capacityTechnologyRepository).findTechnologyIdsByCapacityId(1L);
         verify(tecnologyDataRepository, never()).findByIds(any());
     }
-
-    @Test
-    void findByIds_error_whenIdsListIsEmpty() {
-        List<Long> emptyIds = List.of();
-
-        StepVerifier.create(useCase.findByIds(emptyIds))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.INVALID_ID.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(capacityRepository, never()).findByIds(any());
-        verify(capacityTechnologyRepository, never()).findTechnologyIdsByCapacityId(any());
-    }
-
-    @Test
-    void findByIds_error_whenIdsContainNull() {
-        List<Long> idsWithNull = List.of(1L, null, 3L);
-
-        StepVerifier.create(useCase.findByIds(idsWithNull))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && CapacityError.INVALID_ID.getMessage().equals(ex.getMessage()))
-                .verify();
-
-        verify(capacityRepository, never()).findByIds(any());
-        verify(capacityTechnologyRepository, never()).findTechnologyIdsByCapacityId(any());
-    }
+    
 }

@@ -18,7 +18,7 @@ public enum CapacityError {
     CAPACITY_DELETE_ERROR("Error deleting capacity"),
     TECHNOLOGY_SERVICE_UNAVAILABLE("Technology service is currently unavailable"),
     TECHNOLOGY_SERVICE_ERROR("Error communicating with technology service"),
-    INVALID_ID("Invalid capacity ID"),
+    INVALID_ID("Invalid capacity ID format"),
     NOT_FOUND("Capacity not found");
 
     private final String message;

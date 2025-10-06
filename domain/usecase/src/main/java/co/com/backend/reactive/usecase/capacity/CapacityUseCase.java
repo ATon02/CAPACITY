@@ -7,8 +7,8 @@ import co.com.backend.reactive.model.capacitytechnology.gateways.CapacityTechnol
 import co.com.backend.reactive.model.tecnologydata.gateways.TecnologyDataRepository;
 import co.com.backend.reactive.usecase.capacity.dto.CapacityCompletedResponse;
 import co.com.backend.reactive.usecase.capacity.dto.TechnologyDTO;
-import co.com.backend.reactive.usecase.capacity.utils.CapacityValidator;
 import co.com.backend.reactive.usecase.capacity.enums.CapacityError;
+import co.com.backend.reactive.usecase.capacity.exceptions.BusinessException;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -23,14 +23,13 @@ public class CapacityUseCase implements ICapacityUseCase {
 
     @Override
     public Mono<Capacity> save(Capacity capacity) {
-        return CapacityValidator.validateForSave(capacity)
-                .flatMap(validatedCapacity -> validateAndCreateTechnologies(validatedCapacity))
+        return validateAndCreateTechnologies(capacity)
                 .flatMap(this::saveCapacityWithTechnologies);
     }
 
     private Mono<Capacity> validateAndCreateTechnologies(Capacity capacity) {
         if (capacity.getTechnologies() == null || capacity.getTechnologies().isEmpty()) {
-            return Mono.error(new IllegalArgumentException(CapacityError.TECHNOLOGIES_REQUIRED.getMessage()));
+            return Mono.error(new BusinessException(CapacityError.TECHNOLOGIES_REQUIRED.getMessage()));
         }
         return Flux.fromIterable(capacity.getTechnologies())
                 .flatMap(this::validateTechnologyExists)
@@ -42,7 +41,7 @@ public class CapacityUseCase implements ICapacityUseCase {
         return tecnologyDataRepository.existsById(technologyId)
                 .flatMap(exists -> {
                     if (!exists) {
-                        return Mono.error(new IllegalArgumentException(
+                        return Mono.error(new BusinessException(
                                 CapacityError.TECHNOLOGY_NOT_FOUND.getMessage() + " " + technologyId));
                     }
                     return Mono.just(technologyId);
@@ -67,15 +66,12 @@ public class CapacityUseCase implements ICapacityUseCase {
     private Mono<Void> saveCapacityTechnologies(Capacity capacity) {
         return Flux.fromIterable(capacity.getTechnologies())
                 .map(technologyId -> {
-                    CapacityTechnology capTech = CapacityTechnology.builder()
+                    return CapacityTechnology.builder()
                             .capacityId(capacity.getId())
                             .technologyId(technologyId)
                             .build();
-                    return capTech;
                 })
-                .flatMap(capacityTechnology -> {
-                    return capacityTechnologyRepository.save(capacityTechnology);
-                })
+                .flatMap(capacityTechnologyRepository::save)
                 .then();
     }
 
@@ -113,22 +109,12 @@ public class CapacityUseCase implements ICapacityUseCase {
 
     @Override
     public Mono<Capacity> findById(Long id) {
-        if (id == null || id <= 0) {
-            return Mono.error(new IllegalArgumentException(CapacityError.INVALID_ID.getMessage()));
-        }
         return capacityRepository.findById(id)
-                .switchIfEmpty(Mono.error(new IllegalArgumentException(CapacityError.NOT_FOUND.getMessage())));
+                .switchIfEmpty(Mono.error(new BusinessException(CapacityError.NOT_FOUND.getMessage())));
     }
 
     @Override
     public Flux<CapacityCompletedResponse> findByIds(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return Flux.error(new IllegalArgumentException(CapacityError.INVALID_ID.getMessage()));
-        }
-        boolean hasInvalidIds = ids.stream().anyMatch(id -> id == null || id <= 0);
-        if (hasInvalidIds) {
-            return Flux.error(new IllegalArgumentException(CapacityError.INVALID_ID.getMessage()));
-        }
         return capacityRepository.findByIds(ids)
                 .concatMap(capacity -> capacityTechnologyRepository.findTechnologyIdsByCapacityId(capacity.getId())
                         .collectList()
@@ -160,14 +146,6 @@ public class CapacityUseCase implements ICapacityUseCase {
 
     @Override
     public Mono<Void> deleteCapacities(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return Mono.error(new IllegalArgumentException(CapacityError.INVALID_ID.getMessage()));
-        }
-        boolean hasInvalidIds = ids.stream().anyMatch(id -> id == null || id <= 0);
-        if (hasInvalidIds) {
-            return Mono.error(new IllegalArgumentException(CapacityError.INVALID_ID.getMessage()));
-        }
-        
         return Flux.fromIterable(ids)
                 .flatMap(capacityTechnologyRepository::findTechnologyIdsByCapacityId)
                 .distinct()

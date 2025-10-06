@@ -1,10 +1,13 @@
 package co.com.backend.reactive.api;
 
+import co.com.backend.reactive.api.exceptions.BusinessExceptionHandler;
+import co.com.backend.reactive.usecase.capacity.exceptions.BusinessException;
 import org.springframework.boot.autoconfigure.web.WebProperties;
 import org.springframework.boot.autoconfigure.web.reactive.error.AbstractErrorWebExceptionHandler;
 import org.springframework.boot.web.reactive.error.ErrorAttributes;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.codec.DecodingException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerCodecConfigurer;
@@ -17,6 +20,7 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 
 import co.com.backend.reactive.api.dtos.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.reactive.resource.NoResourceFoundException;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
@@ -44,8 +48,10 @@ public class GlobalExceptionHandler extends AbstractErrorWebExceptionHandler {
         log.error("Ocurrió un error, en solicitud: {}",request.toString());
 
         HttpStatus status;
-        if (error instanceof IllegalArgumentException) {
+        if (error instanceof BusinessExceptionHandler || error instanceof BusinessException || error instanceof DecodingException) {
             status = HttpStatus.BAD_REQUEST;
+        }else if (error instanceof NoResourceFoundException) {
+            status = HttpStatus.NOT_FOUND;
         } else {
             status = HttpStatus.INTERNAL_SERVER_ERROR;
         }
